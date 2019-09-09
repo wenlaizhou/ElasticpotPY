@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+# coding=utf8
+import sys
+
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 from bottle import route, run, request, error
 import requests
 import os.path
@@ -5,16 +12,16 @@ import configparser
 import base64
 import datetime
 import ipaddress
-import urllib.request
-from urllib.parse import quote
+from urllib import quote
 import json
 
 ##########################
 # Config section
 ##########################
 
-configfile = "elasticpot.cfg"   # point to elasticpot.cfg or an ews.cfg if you use ewsposter
-hostport = 9200                 # port to run elasticpot on
+configfile = "elasticpot.cfg"  # point to elasticpot.cfg or an ews.cfg if you use ewsposter
+hostport = 9200  # port to run elasticpot on
+
 
 ##########################
 # FUNCTIONS
@@ -22,27 +29,28 @@ hostport = 9200                 # port to run elasticpot on
 
 # read config from eventually existing T-Pot installation (see dtag-dev-sec.github.io)
 def getConfig():
-        config2 = configparser.ConfigParser()
-        config2.read(configfile)
-        username = config2.get("EWS", "username")
-        token = config2.get("EWS", "token")
-        server = config2.get("EWS", "rhost_first")
-        nodeid = config2.get("ELASTICPOT", "nodeid")
-        ewssender = config2.get("ELASTICPOT", "elasticpot")
-        jsonpath = config2.get("ELASTICPOT", "logfile")
-        ignorecert = config2.get("EWS", "ignorecert")
-        hostip = config2.get("MAIN", "ip")
+    config2 = configparser.ConfigParser()
+    config2.read(configfile)
+    username = config2.get("EWS", "username")
+    token = config2.get("EWS", "token")
+    server = config2.get("EWS", "rhost_first")
+    nodeid = config2.get("ELASTICPOT", "nodeid")
+    ewssender = config2.get("ELASTICPOT", "elasticpot")
+    jsonpath = config2.get("ELASTICPOT", "logfile")
+    ignorecert = config2.get("EWS", "ignorecert")
+    hostip = config2.get("MAIN", "ip")
 
-        return (username, token, server, nodeid, ignorecert, ewssender, jsonpath, hostip)
+    return (username, token, server, nodeid, ignorecert, ewssender, jsonpath, hostip)
+
 
 # re-assemble raw http request from request headers, return base64 encoded
 def createRaw(request):
     # Generate querystring
-    if request.query_string=="":
-         querystring=""
+    if request.query_string == "":
+        querystring = ""
     else:
-        querystring= "?"+ request.query_string
-    httpreq = request.method + " " +request.path + querystring
+        querystring = "?" + request.query_string
+    httpreq = request.method + " " + request.path + querystring
 
     # Get post content
     if request.method == "POST":
@@ -50,24 +58,23 @@ def createRaw(request):
         for l in request.body:
             postContent += l.decode("utf-8")
 
-	# Generate raw http-request manually
-    requestheaders=httpreq + " " + request.environ.get('SERVER_PROTOCOL') + "\n"
-    requestheaders+="Host: "+ request.get_header('Host') + "\n"
-    requestheaders+="User-Agent: "+ request.get_header('User-Agent') + "\n"
-    requestheaders+="Accept: "+ request.get_header('Accept') + "\n"
-    requestheaders+="Content-Length: "+ request.get_header('Content-Length') + "\n"
-    requestheaders+="Content-Type: "+ request.get_header('Content-Type') + "\n" + "\n"
+    # Generate raw http-request manually
+    requestheaders = httpreq + " " + request.environ.get('SERVER_PROTOCOL') + "\n"
+    requestheaders += "Host: " + request.get_header('Host') + "\n"
+    requestheaders += "User-Agent: " + request.get_header('User-Agent') + "\n"
+    requestheaders += "Accept: " + request.get_header('Accept') + "\n"
+    requestheaders += "Content-Length: " + request.get_header('Content-Length') + "\n"
+    requestheaders += "Content-Type: " + request.get_header('Content-Type') + "\n" + "\n"
     if request.method == "POST":
-        requestheaders+=postContent+"\n"
+        requestheaders += postContent + "\n"
 
     # base64 encode
-    requestheaders64=base64.b64encode(requestheaders.encode('UTF-8')).decode('ascii')
+    requestheaders64 = base64.b64encode(requestheaders.encode('UTF-8')).decode('ascii')
     return requestheaders64
 
 
-
 # Send data to either logfile (for ewsposter, location from ews.cfg) or directly to ews backend
-def logData(querystring, postdata, ip,raw):
+def logData(querystring, postdata, ip, raw):
     global username, token, server, nodeid, ignorecert, ewssender, jsonpath, hostip
 
     curDate = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%dT%H:%M:%S')
@@ -143,7 +150,6 @@ def logData(querystring, postdata, ip,raw):
 # Handle index site
 @route('/', method='GET')
 def index():
-
     txt = open("./templates/index.txt")
     indexData = txt.read()
 
@@ -160,7 +166,7 @@ def error404(error):
 
     # DO WE WANT TO LOG THESE???
 
-	# Log request to console
+    # Log request to console
     postContent = ""
     for l in request.body:
         postContent += l.decode("utf-8")
@@ -168,21 +174,21 @@ def error404(error):
     ip = request.environ.get('REMOTE_ADDR')
 
     # Generate querystring
-    if request.query_string=="":
-         querystring=""
+    if request.query_string == "":
+        querystring = ""
     else:
-        querystring= "?"+ request.query_string
-    httpreq = request.method + " " +request.path + querystring
+        querystring = "?" + request.query_string
+    httpreq = request.method + " " + request.path + querystring
 
-	# Create request headers for raw request
-    requestheaders64=createRaw(request)
+    # Create request headers for raw request
+    requestheaders64 = createRaw(request)
 
-	# Log the data
+    # Log the data
     logData(httpreq, postContent, ip, requestheaders64)
-
 
     # Return data
     return indexData
+
 
 # handle favicon
 @route('/favicon.ico', method='GET')
@@ -193,6 +199,7 @@ def getindeces():
     # Not an attack
     # Return default data, do nothing
     return indexData
+
 
 # handle route to indices
 @route('/_cat/indices', method='GET')
@@ -206,14 +213,14 @@ def getindeces():
     ip = request.environ.get('REMOTE_ADDR')
 
     # Generate querystring
-    if request.query_string=="":
-         querystring=""
+    if request.query_string == "":
+        querystring = ""
     else:
-        querystring= "?"+ request.query_string
-    httpreq = request.method + " " +request.path + querystring
+        querystring = "?" + request.query_string
+    httpreq = request.method + " " + request.path + querystring
 
     # Create request headers for raw request
-    requestheaders64=createRaw(request)
+    requestheaders64 = createRaw(request)
 
     # Log the data
     logData(httpreq, postContent, ip, requestheaders64)
@@ -221,34 +228,34 @@ def getindeces():
     # Return data
     return indexData
 
+
 # handle search route (GET)
 @route('/_search', method='GET')
 def handleSearchExploitGet():
-
     # Log request to console
     postContent = ""
     print ("Elasticpot: Found possible attack (_search): " + request.url)
     ip = request.environ.get('REMOTE_ADDR')
 
     # Generate querystring
-    if request.query_string=="":
-         querystring=""
+    if request.query_string == "":
+        querystring = ""
     else:
-        querystring= "?"+ request.query_string
-    httpreq = request.method + " " +request.path + querystring
+        querystring = "?" + request.query_string
+    httpreq = request.method + " " + request.path + querystring
 
     # Create request headers for raw request
-    requestheaders64=createRaw(request)
+    requestheaders64 = createRaw(request)
 
-	# Log the data
+    # Log the data
     logData(httpreq, postContent, ip, requestheaders64)
 
     return ""
 
+
 # handle search route (POST)
 @route('/_search', method='POST')
 def handleSearchExploit():
-
     # Log request to console
     postContent = ""
     for l in request.body:
@@ -257,19 +264,20 @@ def handleSearchExploit():
     ip = request.environ.get('REMOTE_ADDR')
 
     # Generate querystring
-    if request.query_string=="":
-         querystring=""
+    if request.query_string == "":
+        querystring = ""
     else:
-        querystring= "?"+ request.query_string
-    httpreq = request.method + " " +request.path + querystring
+        querystring = "?" + request.query_string
+    httpreq = request.method + " " + request.path + querystring
 
-	# Create request headers for raw request
-    requestheaders64=createRaw(request)
+    # Create request headers for raw request
+    requestheaders64 = createRaw(request)
 
-	# Log the data
+    # Log the data
     logData(httpreq, postContent, ip, requestheaders64)
 
     return ""
+
 
 # handle head plugin
 @route('/_plugin/head')
@@ -284,27 +292,28 @@ def pluginhead():
     print("Elasticpot: Access to ElasticSearch head plugin: " + request.url + " " + postContent)
     ip = request.environ.get('REMOTE_ADDR')
 
-	# Generate querystring
-    if request.query_string=="":
-         querystring=""
+    # Generate querystring
+    if request.query_string == "":
+        querystring = ""
     else:
-        querystring= "?"+ request.query_string
-    httpreq = request.method + " " +request.path + querystring
+        querystring = "?" + request.query_string
+    httpreq = request.method + " " + request.path + querystring
 
-	# Create request headers for raw request
-    requestheaders64=createRaw(request)
+    # Create request headers for raw request
+    requestheaders64 = createRaw(request)
 
-	# Log the data
+    # Log the data
     logData(httpreq, postContent, ip, requestheaders64)
 
     # Return data
     return indexData
 
+
 ### More routes to add...
 
 
-#@route('/<index:path>?pretty', method='PUT')
-#def createindex(index):
+# @route('/<index:path>?pretty', method='PUT')
+# def createindex(index):
 
 ##########################
 ##### MAIN START
@@ -314,7 +323,7 @@ def pluginhead():
 if (not os.path.isfile(configfile)):
     print("Elasticpot: Failed to read configfile. Elasticpot will exit.")
     exit(1)
-else: 
+else:
     username, token, server, nodeid, ignorecert, ewssender, jsonpath, hostip = getConfig()
     try:
         if ((ipaddress.ip_address(hostip).is_private) and not (ipaddress.ip_address(hostip).is_global)):
@@ -329,7 +338,7 @@ else:
         print("IP is invalid in config file, please make sure to put a valid IP address in config file: " + hostip)
         exit(1)
 
-    srcport = 44927 # Cannot be retrieved via bottles request api, this is just a dummy port
+    srcport = 44927  # Cannot be retrieved via bottles request api, this is just a dummy port
 # done Initialization
 
 # run server
